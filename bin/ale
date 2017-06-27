@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import label_extraction.labels
 from wrenlab.ncbi.geo import label
 import click
 
