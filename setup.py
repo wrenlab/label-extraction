@@ -20,7 +20,7 @@ setup(
             "Topic :: Scientific/Engineering :: Bio-Informatics"
             ],
         license="AGPLv3+",
-        script=["bin/ale"],
+        scripts=["bin/ale"],
         dependency_links=["https://gitlab.com/wrenlab/wrenlab.git"]
         )
 

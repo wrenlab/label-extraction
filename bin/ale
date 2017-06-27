@@ -1,7 +1,27 @@
 #!/usr/bin/env python
 
 import label_extraction.labels
+from wrenlab.ncbi.geo import label
 import click
 
+@click.command()
+@click.option("--taxon",default=9606,help="taxon id for labels to be searched for. default is taxon id 9606 (homo sapiens)")
+def get_labels(taxon):
+    output = label.get_labels(taxon_id=taxon)
+    print(",".join([str(x) for x in output.columns]))
+    for line in output.itertuples():
+        print(",".join([ str(x) for x in line]))
+
+@click.command()
+@click.argument("output")
+@click.option("--taxon",default=9606,help="taxon id for labels to be searched for. default is taxon id 9606 (homo sapiens)")
+@click.option("--delimiter",default=",",help="set delimiter for output format")
+def write_labels(taxon,output,delimiter):
+    df = label.get_labels(taxon)
+    print("Writing taxon %s labels to output file %s" %(taxon,output))
+    df.to_csv(output,sep=delimiter)
+    print("Finished writing file.")
+        
 if __name__ == "__main__":
-    label_extraction.labels.get_labels()
+    #get_labels()
+    write_labels()
