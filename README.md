@@ -1,3 +1,7 @@
+## ALE CLI - Automated Label Extraction Command Line Interface
+
+Tools to extract and validate labels using wrenlab's ALE.
+
 ## REQUIREMENTS
 
 - [wrenlab](https://gitlab.com/wrenlab/wrenlab)
