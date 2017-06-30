@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from wrenlab.ncbi.geo import label
+from wrenlab.text.label_extraction import evaluation
 import click
 
 @click.command()
@@ -20,7 +21,16 @@ def write_labels(taxon,output,delimiter):
     print("Writing taxon %s labels to output file %s" %(taxon,output))
     df.to_csv(output,sep=delimiter)
     print("Finished writing file.")
-        
+
+@click.option("--taxon",default=9606,help="taxon id to test predictions for")
+#TODO write label option better
+@click.option("--label",default="Gender",help="label to generate predictions for. available is Age,Gender,TissueID")
+def get_validation(taxon,key):
+    #print notice when using default vars
+    metrics = evaluation.geo(key)
+    output = metrics.detailed_metrics()
+    print(output)
+
 if __name__ == "__main__":
     #get_labels()
     write_labels()

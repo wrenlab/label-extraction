@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+
+import metalearn
+from wrenlab.text.label_extraction import evaluation
+import click
+
+#suppress warnings
+import warnings
+warnings.filterwarnings("ignore")
+
+@click.command()
+@click.option("--taxon",default=9606,help="taxon id to test predictions for")
+#TODO write label option better
+#@click.option("--label",default="Gender",help="label to generate predictions for. available is Age,Gender,TissueID")
+def get_validation(taxon,label):
+    #print notice when using default vars
+    metrics = evaluation.geo(label)
+    output = metrics.detailed_metrics()
+    print(output)
+ 
+@click.command()
+@click.option("--taxon",default=9606,help="taxon id to test predictions for")
+def ale_validation(taxon):
+ 
+    labels = ["Gender","TissueID","Age"]
+    
+    for label in labels:
+        result = evaluation.geo(label)
+        print("\nValidation results of extracted labels for:",label,"\n")
+        get_validation_metrics(result)
+
+    '''
+    #gender
+    metrics = evaluation.geo("Gender")
+    output = metrics.detailed_metrics()
+    print("Gender:")
+    print(output)
+    #tissue
+    metrics = evaluation.geo("TissueID")
+    output = metrics.detailed_metrics()
+    print("Tissue ID:")
+    print(output)
+    #age
+    '''
+
+def get_metric(moi,metrics):
+    out = [ i for i,v in enumerate(metrics) if v[0] == moi ]
+    return(metrics[out][1])
+
+def mc_metrics(result):
+    metric_labels = ['NClasses',
+            'NPredictedClasses',
+            'MacroAUC',
+            'MicroAUC',
+            'MacroPrecision',
+            'MacroRecall',
+            'MicroPrecision',
+            'MicroRecall']
+    metric_values = [ v[1](result.y,result.y_hat) for v in result.METRICS[0:len(metric_labels)] ]
+    metric_values = [ str(x) for x in metric_values ]
+    for i in list(range(len(metric_labels))):
+            prettyout = "\t".join([metric_labels[i],metric_values[i]])
+            print(prettyout)
+
+def rr_metrics(result):
+    metric_labels = ['PercentPredicted',
+                'PearsonR',
+                'R2Score',
+                'MAD',
+                'MSE',
+                'EVAR',
+                'LargestDelta']
+    metric_values = [ v[1](result.y,result.y_hat) for v in result.METRICS[0:len(metric_labels)] ]
+    metric_values = [ str(x) for x in metric_values ]
+    for i in list(range(len(metric_labels))):
+            prettyout = "\t".join([metric_labels[i],metric_values[i]])
+            print(prettyout)
+
+def get_validation_metrics(result):
+    if type(result) == metalearn.result.MulticlassResult: 
+        mc_metrics(result)
+        pass
+    elif type(result) == metalearn.result.RegressionResult:
+        rr_metrics(result)
+        pass
+    else:
+        errout = "Unknown input. Please use MulticlassResult or RegressionResult as input."
+        print(errout)
+
+if __name__ == "__main__":
+    #get_validation()
+    ale_validation()
