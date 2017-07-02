@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+#LEGACY - wrenlab.ncbi.geo.label
+#WIP - wrenlab.text.label_extraction.evaluation
+
 from wrenlab.ncbi.geo import label
 from wrenlab.text.label_extraction import evaluation
 import click
@@ -9,13 +12,20 @@ import click
 
 @click.command()
 @click.argument("output")
-@click.option("--taxon",default=9606,help="taxon id for labels to be searched for. default is taxon id 9606 (homo sapiens)")
-@click.option("--delimiter",default=",",help="set delimiter for output format")
-#@click.option("--platform",default=None,help="filter output by GEO Platform")
-#@click.option("--tissue",default=None,help=None)
-def write_labels_WIP(taxon,output,delimiter):
+@click.option("--taxon",default=9606,help="Taxon ID for labels to be searched for. Defaults to 9606 (Homo sapiens)")
+@click.option("--delimiter",default=",",help="Set 1-character delimiter for output file. Defaults to csv.")
+@click.option("--platform",default=None,help="Filter extracted labels by GEO Platform ID")
+@click.option("--tissue",default=None,help="Filter extracted labels by BTO Tissue ID")
+def write_labels(taxon,output,delimiter,platform,tissue):
+    """This script returns extracted GEO labels for a given NCBI Taxon ID to an output file"""
     df = label.get_labels(taxon)
     print("Writing taxon %s labels to output file %s" %(taxon,output))
+    if platform != None:
+        platform = int(str(platform).lstrip("GPL"))
+        df = df[df["PlatformID"]==platform]
+    if tissue != None:
+        tissue = int(str(tissue).lstrip("0"))
+        df = df[df["TissueID"]==tissue]
     df.to_csv(output,sep=delimiter)
     print("Finished writing file.")
 
@@ -31,5 +41,4 @@ def get_validation(taxon,key):
 '''
 
 if __name__ == "__main__":
-    #get_labels()
-    write_labels_WIP()
+    write_labels()

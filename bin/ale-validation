@@ -2,6 +2,7 @@
 
 import metalearn
 from wrenlab.text.label_extraction import evaluation
+from wrenlab.ncbi.geo import label
 import click
 
 #suppress warnings
@@ -20,7 +21,7 @@ def get_validation(taxon,label):
  
 @click.command()
 @click.option("--taxon",default=9606,help="taxon id to test predictions for")
-def ale_validation(taxon):
+def ale_validation_WIP(taxon):
  
     labels = ["Gender","TissueID","Age"]
     
@@ -86,6 +87,19 @@ def get_validation_metrics(result):
     else:
         errout = "Unknown input. Please use MulticlassResult or RegressionResult as input."
         print(errout)
+
+#non WIP validation
+
+@click.command()
+@click.option("--taxon",default=9606,help="taxon id to test predictions for")
+def ale_validation(taxon):
+    metrics = label.Evaluation(taxon)
+    print(metrics.age())
+    print(metrics.gender())
+    #print(metrics.tissue())
+    tissue = metrics.tissue2()
+    print(tissue.summary())
+    print("macroprecision:",tissue.macro_precision())
 
 if __name__ == "__main__":
     #get_validation()
