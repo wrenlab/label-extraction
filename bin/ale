@@ -4,24 +4,22 @@ from wrenlab.ncbi.geo import label
 from wrenlab.text.label_extraction import evaluation
 import click
 
-@click.command()
-@click.option("--taxon",default=9606,help="taxon id for labels to be searched for. default is taxon id 9606 (homo sapiens)")
-def get_labels(taxon):
-    output = label.get_labels(taxon_id=taxon)
-    print(",".join([str(x) for x in output.columns]))
-    for line in output.itertuples():
-        print(",".join([ str(x) for x in line]))
+#TODO broken values of the WIP label extraction
+#use wrenlab.ncbi.geo.get_labels for the old method
 
 @click.command()
 @click.argument("output")
 @click.option("--taxon",default=9606,help="taxon id for labels to be searched for. default is taxon id 9606 (homo sapiens)")
 @click.option("--delimiter",default=",",help="set delimiter for output format")
-def write_labels(taxon,output,delimiter):
+#@click.option("--platform",default=None,help="filter output by GEO Platform")
+#@click.option("--tissue",default=None,help=None)
+def write_labels_WIP(taxon,output,delimiter):
     df = label.get_labels(taxon)
     print("Writing taxon %s labels to output file %s" %(taxon,output))
     df.to_csv(output,sep=delimiter)
     print("Finished writing file.")
 
+'''
 @click.option("--taxon",default=9606,help="taxon id to test predictions for")
 #TODO write label option better
 @click.option("--label",default="Gender",help="label to generate predictions for. available is Age,Gender,TissueID")
@@ -30,7 +28,8 @@ def get_validation(taxon,key):
     metrics = evaluation.geo(key)
     output = metrics.detailed_metrics()
     print(output)
+'''
 
 if __name__ == "__main__":
     #get_labels()
-    write_labels()
+    write_labels_WIP()
