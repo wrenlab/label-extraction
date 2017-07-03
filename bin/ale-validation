@@ -148,7 +148,8 @@ class Evaluation(object):
         pct_key = N / (self.ch.Key == key).sum()
 
         return pd.Series([N,pct_all,pct_key,P,R],
-                index=["N", "%All", "%Key", "Precision", "Recall"])
+                #index=["N", "%All", "%Key", "Precision", "Recall"])
+                index=["N", "Percent Extracted", "Percent Extracted With Age", "Macro-Average Precision", "Macro-Average Recall"])
 
     def age(self):
         return self._binary_report("age")
@@ -159,12 +160,12 @@ class Evaluation(object):
     def _tissue(self):
         pass
     
-    def tissue2(self):
+    def tissue2(self,label_cutoff):
         o = wrenlab.ontology.fetch("BTO")
         M = o.name_map()
 
         y = self.Ag.TissueID.dropna()
-        ix = y.value_counts().index
+        ix = y.value_counts().index[:label_cutoff]
         y = y.ix[y.isin(ix)]
 
         y_hat = self.A.TissueID
@@ -173,7 +174,7 @@ class Evaluation(object):
         y = y.apply(lambda id: M[id]).astype("category")
         y_hat = y_hat.apply(lambda id: M[id]).astype("category")
         return wrenlab.ml.CategoricalResult(y, y_hat)
-
+    
     def tissue_distance(self, randomize=False):
         g = wrenlab.ontology.fetch("BTO")\
                 .to_graph(relations=["is_a", "part_of"])\
@@ -218,15 +219,8 @@ class Evaluation(object):
         if path is not None:
             plt.savefig(path, dpi=360)
 
-
 def mprint(metric):
     print(metric.to_string())
-    '''
-    pd.set_option("display.max_rows",len(metric))
-    print(metric)
-    pd.reset_option("display.max_rows")
-    pass
-    '''
 
 @click.command()
 #@click.option("--taxon",default=9606,help="taxon id to test predictions for")
@@ -236,22 +230,38 @@ def ale_validation():
     metrics = Evaluation(taxon)
     print("\nLabel extraction metrics for taxon",str(taxon))
     print("\nEvaluation of extracted age labels:\n")
-    mprint(metrics.age())
+    mprint(metrics.age()[3:])
     print("\nEvaluation of extracted gender labels:\n")
-    mprint(metrics.gender())
+    mprint(metrics.gender()[3:])
     print("\nEvaluation of extracted tissue labels:\n")
     #print(metrics.tissue())
-    tissue = metrics.tissue2()
+    
     #print(tissue.summary)
-    tlabels = metrics.tissue_distance()
-    #print(tlabels.head())
-    #print(tlabels.columns)
-    t_nclasses = tlabels["y"].unique()[0]
-    t_pclasses = tlabels["y_hat"].unique()[0]
-    print("NClasses:",t_nclasses)
-    print("Predicted Classes:",t_pclasses)
-    print("(Macro)Precision:",tissue.macro_precision)
-    print("(Macro)Recall:",tissue.macro_recall)
+    
+    #tlabels = metrics.tissue_distance()
+    #t_nclasses = tlabels["y"].unique()[0]
+    #t_pclasses = tlabels["y_hat"].unique()[0]
+    
+    #tindex = ["NClasses","Predicted Classes","Precision","Recall"]
+    
+    def tissue_metrics(label_cutoff):
+
+        tissue = metrics.tissue2(label_cutoff)
+        if label_cutoff == -1:
+            print("Precision and Recall using all avaiable tissue labels\n")
+        else:
+            print("Precision and Recall using top %s most frequent tissue labels\n" %(label_cutoff))
+    
+        tindex = ["Macro-Average Precision","Macro-Average Recall","Micro-Average Precision","Micro-Average Recall"]
+    
+        tvalues = [tissue.macro_precision,tissue.macro_recall,tissue.micro_precision,tissue.micro_recall]
+    
+        tout = pd.Series(index=tindex,data=tvalues)
+        mprint(tout)
+
+    tissue_metrics(25)
+    print("")
+    tissue_metrics(-1)
 
 if __name__ == "__main__":
     #get_validation()
