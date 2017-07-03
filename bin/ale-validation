@@ -1,13 +1,37 @@
 #!/usr/bin/env python
 
+#suppress warnings
+import warnings
+warnings.filterwarnings("ignore")
+
 import metalearn
 from wrenlab.text.label_extraction import evaluation
 from wrenlab.ncbi.geo import label
 import click
 
-#suppress warnings
-import warnings
-warnings.filterwarnings("ignore")
+#Eval imports 
+from collections import namedtuple, Counter
+import functools
+import itertools
+import re
+import sqlite3
+import pkg_resources
+
+import networkx as nx
+import yaml
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib_venn import venn3
+
+import wrenlab.ml
+import wrenlab.data.geo
+import wrenlab.ontology
+from wrenlab.text.ahocorasick import MixedCaseSensitivityTrie
+from wrenlab.util import memoize, as_float
+import wrenlab.text.ahocorasick
+
+
 
 @click.command()
 @click.option("--taxon",default=9606,help="taxon id to test predictions for")
@@ -90,16 +114,144 @@ def get_validation_metrics(result):
 
 #non WIP validation
 
+
+class Evaluation(object):
+    def __init__(self, taxon_id):
+        assert taxon_id == 9606
+
+        self.A = label.get_labels(taxon_id)
+        self.T = label.sample_text(taxon_id=taxon_id)
+        self.Ag = label.flatten_tissue(wrenlab.data.geo.labels("jdw"))
+        self.ch = label.characteristics(taxon_id)
+
+    def _binary_report(self, key):
+        """
+        %All and %Key are estimated percent extracted and correct 
+        (based on computed precision) from:
+        - "All": all records for this taxon
+        - "Key": records which had an "age" key field extracted from characteristics
+        """
+        y = self.Ag[key.title()].dropna()
+        y_hat = self.A[key.title()].loc[y.index]
+        ok = ~y_hat.isnull()
+        if key == "age":
+            dx = (y - y_hat).abs()
+            eq = dx < 1
+        elif key == "gender":
+            eq = y == y_hat
+
+        P = eq[ok].mean()
+        R = (eq & ok).mean()
+
+        N = self.A[key.title()].dropna().shape[0]
+        pct_all = N / self.T.shape[0]
+        pct_key = N / (self.ch.Key == key).sum()
+
+        return pd.Series([N,pct_all,pct_key,P,R],
+                index=["N", "%All", "%Key", "Precision", "Recall"])
+
+    def age(self):
+        return self._binary_report("age")
+
+    def gender(self):
+        return self._binary_report("gender")
+
+    def _tissue(self):
+        pass
+    
+    def tissue2(self):
+        o = wrenlab.ontology.fetch("BTO")
+        M = o.name_map()
+
+        y = self.Ag.TissueID.dropna()
+        ix = y.value_counts().index
+        y = y.ix[y.isin(ix)]
+
+        y_hat = self.A.TissueID
+        y_hat = y_hat.ix[y_hat != 0]
+
+        y = y.apply(lambda id: M[id]).astype("category")
+        y_hat = y_hat.apply(lambda id: M[id]).astype("category")
+        return wrenlab.ml.CategoricalResult(y, y_hat)
+
+    def tissue_distance(self, randomize=False):
+        g = wrenlab.ontology.fetch("BTO")\
+                .to_graph(relations=["is_a", "part_of"])\
+                .to_undirected()
+
+        y = self.Ag.TissueID.dropna()
+        y_hat = self.A.TissueID
+        y_hat = y_hat.ix[y_hat != 0]
+        y, y_hat = wrenlab.util.align_series(y, y_hat)
+
+        o = []
+        for ix, y_, y_hat_ in zip(y.index, y, y_hat):
+            try:
+                n = nx.shortest_path_length(g, y_, y_hat_)
+            except nx.NetworkXNoPath:
+                continue
+            o.append((ix, y_, y_hat_, n))
+        return pd.DataFrame.from_records(o,
+                    columns=["SampleID", "y", "y_hat", "Distance"])\
+                .set_index(["SampleID"])
+
+    def tissue(self, n=None):
+        o = wrenlab.ontology.fetch("BTO", int_keys=True)
+        y = self.Ag.TissueID
+        #y = y.ix[y != 0]
+        if n is not None:
+            y = y.ix[y.isin(y.value_counts().index[:n])]
+        y_hat = self.A.TissueID
+        #y_hat = y_hat.ix[y_hat != 0]
+        return wrenlab.ml.OntologyResult(o, y, y_hat)
+
+    def venn(self, path=None):
+        plt.clf()
+        A = self.A.ix[self.A.Molecule.isin(["total RNA", "polyA RNA"]),:]
+        return venn3(
+                [
+                    set(A.Age.dropna().index),
+                    set(A.Gender.dropna().index),
+                    set(A.TissueID.ix[self.A.TissueID != 0].index)
+                ],
+                set_labels=["Age", "Gender", "Tissue"])
+        if path is not None:
+            plt.savefig(path, dpi=360)
+
+
+def mprint(metric):
+    print(metric.to_string())
+    '''
+    pd.set_option("display.max_rows",len(metric))
+    print(metric)
+    pd.reset_option("display.max_rows")
+    pass
+    '''
+
 @click.command()
-@click.option("--taxon",default=9606,help="taxon id to test predictions for")
-def ale_validation(taxon):
-    metrics = label.Evaluation(taxon)
-    print(metrics.age())
-    print(metrics.gender())
+#@click.option("--taxon",default=9606,help="taxon id to test predictions for")
+#Taxon is not supported because we only have gold standard annotations for human data
+def ale_validation():
+    taxon = 9606
+    metrics = Evaluation(taxon)
+    print("\nLabel extraction metrics for taxon",str(taxon))
+    print("\nEvaluation of extracted age labels:\n")
+    mprint(metrics.age())
+    print("\nEvaluation of extracted gender labels:\n")
+    mprint(metrics.gender())
+    print("\nEvaluation of extracted tissue labels:\n")
     #print(metrics.tissue())
     tissue = metrics.tissue2()
-    print(tissue.summary())
-    print("macroprecision:",tissue.macro_precision())
+    #print(tissue.summary)
+    tlabels = metrics.tissue_distance()
+    #print(tlabels.head())
+    #print(tlabels.columns)
+    t_nclasses = tlabels["y"].unique()[0]
+    t_pclasses = tlabels["y_hat"].unique()[0]
+    print("NClasses:",t_nclasses)
+    print("Predicted Classes:",t_pclasses)
+    print("(Macro)Precision:",tissue.macro_precision)
+    print("(Macro)Recall:",tissue.macro_recall)
 
 if __name__ == "__main__":
     #get_validation()

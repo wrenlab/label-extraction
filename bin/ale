@@ -3,6 +3,10 @@
 #LEGACY - wrenlab.ncbi.geo.label
 #WIP - wrenlab.text.label_extraction.evaluation
 
+#suppress warnings
+import warnings
+warnings.filterwarnings("ignore")
+
 from wrenlab.ncbi.geo import label
 from wrenlab.text.label_extraction import evaluation
 import click
@@ -18,8 +22,9 @@ import click
 @click.option("--tissue",default=None,help="Filter extracted labels by BTO Tissue ID")
 def write_labels(taxon,output,delimiter,platform,tissue):
     """This script returns extracted GEO labels for a given NCBI Taxon ID to an output file"""
+    print("Caching GEO annotation and extracting labels..")
     df = label.get_labels(taxon)
-    print("Writing taxon %s labels to output file %s" %(taxon,output))
+    print("Writing taxon %s labels to output file %s.." %(taxon,output))
     if platform != None:
         platform = int(str(platform).lstrip("GPL"))
         df = df[df["PlatformID"]==platform]
@@ -27,7 +32,7 @@ def write_labels(taxon,output,delimiter,platform,tissue):
         tissue = int(str(tissue).lstrip("0"))
         df = df[df["TissueID"]==tissue]
     df.to_csv(output,sep=delimiter)
-    print("Finished writing file.")
+    print("Finished writing output to %s" %(output))
 
 '''
 @click.option("--taxon",default=9606,help="taxon id to test predictions for")
