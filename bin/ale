@@ -34,16 +34,5 @@ def write_labels(taxon,output,delimiter,platform,tissue):
     df.to_csv(output,sep=delimiter)
     print("Finished writing output to %s" %(output))
 
-'''
-@click.option("--taxon",default=9606,help="taxon id to test predictions for")
-#TODO write label option better
-@click.option("--label",default="Gender",help="label to generate predictions for. available is Age,Gender,TissueID")
-def get_validation(taxon,key):
-    #print notice when using default vars
-    metrics = evaluation.geo(key)
-    output = metrics.detailed_metrics()
-    print(output)
-'''
-
 if __name__ == "__main__":
     write_labels()
