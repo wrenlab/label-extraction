@@ -147,9 +147,8 @@ class Evaluation(object):
         pct_all = N / self.T.shape[0]
         pct_key = N / (self.ch.Key == key).sum()
 
-        return pd.Series([N,pct_all,pct_key,P,R],
-                #index=["N", "%All", "%Key", "Precision", "Recall"])
-                index=["N", "Percent Extracted", "Percent Extracted With Age", "Macro-Average Precision", "Macro-Average Recall"])
+        return pd.Series([N,P,R],
+                index=["N", "Macro-Average Precision", "Macro-Average Recall"])
 
     def age(self):
         return self._binary_report("age")
@@ -226,13 +225,14 @@ def mprint(metric):
 #@click.option("--taxon",default=9606,help="taxon id to test predictions for")
 #Taxon is not supported because we only have gold standard annotations for human data
 def ale_validation():
+    ''' Outputs validation metrics for ALE extracted labels for GEO data for NCBI Taxon ID 9606. Gold standard is Wrenlab's JDW manual annotations.'''    
     taxon = 9606
     metrics = Evaluation(taxon)
-    print("\nLabel extraction metrics for taxon",str(taxon))
+    print("\nLabel extraction validation metrics for GEO data for NCBI Taxon ID",str(taxon))
     print("\nEvaluation of extracted age labels:\n")
-    mprint(metrics.age()[3:])
+    mprint(metrics.age())
     print("\nEvaluation of extracted gender labels:\n")
-    mprint(metrics.gender()[3:])
+    mprint(metrics.gender())
     print("\nEvaluation of extracted tissue labels:\n")
     #print(metrics.tissue())
     
