@@ -23,7 +23,7 @@ setup(
         #packages=find_packages(),
         packages=["mle"],
         package_dir={"mle": "mle"},
-        package_data={"mle": ['data/*.tsv']},
+        #package_data={"mle": ['data/*.tsv']},
         include_package_data=True,
         scripts=["bin/ale","bin/ale-validation"],
         dependency_links=["https://gitlab.com/wrenlab/wrenlab.git"]
